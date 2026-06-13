@@ -147,9 +147,11 @@ on run
 									do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
 									execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
 									else
-									-- 匹配评分
-									set md to execute active tab of front window javascript "BossChat.sc();"
-									if md is missing value then set md to "0|0|0|0|0|err"
+									-- AI匹配评分（本地TF-IDF语义匹配）
+									set resumeJson to execute active tab of front window javascript "localStorage.getItem('bosschat_resume')||'{}'"
+									set jdText to execute active tab of front window javascript "var el=document.querySelector('.job-detail-body')||document.querySelector('.job-sec-text');el?el.textContent.substring(0,3000):''"
+									set md to do shell script "python3 -c \"import json,sys; r=" & resumeJson & "; j=sys.stdin.read(); print(json.dumps({'resume':r,'jd_text':j}))\" <<< " & quoted form of jdText & " | python3 " & projectDir & "/src/ai_match_stdin.py"
+									if md is "" then set md to "0|0|0|0|0|不限|AI失败"
 									set AppleScript's text item delimiters to "|"
 									set mt to text item 1 of md
 									set ms to text item 2 of md
