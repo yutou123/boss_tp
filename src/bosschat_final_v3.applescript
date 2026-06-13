@@ -175,9 +175,9 @@ on run
 													set fl to "  ⏭ 已投递过(跳转聊天页)"
 													do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
 													execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
-													execute active tab of front window javascript "BossChat._markGreeted('" & ch & "','" & cc & "')"
-													execute active tab of front window javascript "window.location.href='" & su & "'"
-													delay 3
+														execute active tab of front window javascript "BossChat._markGreeted('" & ch & "','" & cc & "')"
+														execute active tab of front window javascript "history.back()"
+														delay 3
 												else
 													delay 1
 													execute active tab of front window javascript "BossChat.sb();BossChat.uq();"
