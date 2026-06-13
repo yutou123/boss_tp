@@ -1,10 +1,14 @@
 -- BossChat 最终版
 on run
+	-- 动态获取项目目录（根据脚本自身路径）
+	set scriptPath to POSIX path of (path to me)
+	set projectDir to do shell script "dirname \"$(dirname '" & scriptPath & "')\""
+	
 	tell application "Google Chrome"
 		activate
 		
 		-- 设置日志文件
-		set logFile to "/Users/taro/boss直聘自动聊天/run_log.txt"
+		set logFile to projectDir & "/run_log.txt"
 		do shell script "/bin/echo \"=== BossChat Run ===\" > " & quoted form of logFile
 		
 		-- 检查/获取简历（新标签页打开，不干扰当前页）
@@ -38,7 +42,7 @@ on run
 		set smc to 0
 		set soc to 0
 		set rcList to {} -- 不合适企业名单
-		set rcFile to "/Users/taro/boss直聘自动聊天/rejected_companies.txt"
+		set rcFile to projectDir & "/rejected_companies.txt"
 		try
 			set rcContent to do shell script "cat " & quoted form of rcFile & " 2>/dev/null || echo ''"
 			set AppleScript's text item delimiters to {return, linefeed}
@@ -232,7 +236,7 @@ on run
 		set fl to "=== 扫描聊天 ==="
 		do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
 		set rcList to {}
-		set rcFile to "/Users/taro/boss直聘自动聊天/rejected_companies.txt"
+		set rcFile to projectDir & "/rejected_companies.txt"
 		try
 			set rcContent to do shell script "cat " & quoted form of rcFile & " 2>/dev/null || echo ''"
 			set AppleScript's text item delimiters to {return, linefeed}
@@ -249,7 +253,7 @@ on run
 		set URL of active tab of front window to "https://www.zhipin.com/web/geek/chat"
 		delay 5
 		-- 聊天页重新注入（从文件读取，避免AppleScript引号冲突）
-		set chatJs to do shell script "cat /Users/taro/boss直聘自动聊天/src/chat_scan_helpers.js"
+		set chatJs to do shell script "cat " & quoted form of (projectDir & "/src/chat_scan_helpers.js")
 		execute active tab of front window javascript "window.BossChat=window.BossChat||{}"
 		execute active tab of front window javascript chatJs
 		set pageNum to 0
