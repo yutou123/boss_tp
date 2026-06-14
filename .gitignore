@@ -1,6 +1,7 @@
-.DS_Store
-*.log
 __pycache__/
-node_modules/
+.DS_Store
 .env
+*.log
+greeted_companies.txt progress.txt
+node_modules/
 run_log.txt
