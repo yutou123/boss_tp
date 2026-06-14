@@ -4,7 +4,7 @@ on run
 	set scriptPath to POSIX path of (path to me)
 	set projectDir to do shell script "dirname \"$(dirname '" & scriptPath & "')\""
 	
-	tell application "Google Chrome"
+	tell application "Safari"
 		activate
 		
 		-- 设置日志文件
@@ -12,27 +12,25 @@ on run
 		do shell script "/bin/echo \"=== BossChat Run ===\" > " & quoted form of logFile
 		
 		-- 检查/获取简历（新标签页打开，不干扰当前页）
-		set rh to execute active tab of front window javascript "localStorage.getItem('bosschat_resume')?'ok':'new';"
-		if rh is "new" then
-			tell front window
-				set nt to make new tab at end of tabs with properties {URL:"https://www.zhipin.com/web/geek/resume"}
-				set active tab index to (count of tabs)
-			end tell
-			delay 5
-			set rx to execute active tab of front window javascript "var r={name:'',experience_years:10,education:'本科',skills:[],kw:[]};var pt=document.body.textContent||'';if(pt.indexOf('博士')>=0)r.education='博士';else if(pt.indexOf('硕士')>=0)r.education='硕士';else if(pt.indexOf('本科')>=0)r.education='本科';var ps=document.querySelector('.resume-professional-skill');if(ps){var t=ps.textContent||'';var p=t.split(/[,，、]/);for(var i=0;i<p.length;i++){var s=p[i].trim();var ci=s.indexOf('：');if(ci>=0)s=s.substring(ci+1);ci=s.indexOf(':');if(ci>=0)s=s.substring(ci+1);if(s.length>1&&s.length<30&&s!='编辑删除'&&s!='专业技能')r.skills.push(s)}}var ak='LLM,AI Agent,RAG,Prompt,SEO,GEO,数字人,AIGC,大模型,知识库,智能体,Agent,虚拟空间,元宇宙,工作流,对话,政务,司法,流量,内容管理,数据产品,B端产品,C端产品,G端产品,产品设计,数据分析,搜索引擎优化,生成式引擎优化,AI助手,模型对话,Prompt Engineering'.split(',');for(var i=0;i<ak.length;i++){if(pt.indexOf(ak[i])>=0&&r.skills.indexOf(ak[i])<0)r.skills.push(ak[i])}localStorage.setItem('bosschat_resume',JSON.stringify(r));"
-			close last tab of front window
-			delay 1
-		end if
+		set rh to do JavaScript "localStorage.getItem('bosschat_resume')?'ok':'new';" in document of front window
+				if rh is "new" then
+					set savedUrl to do JavaScript "window.location.href" in document of front window
+					set URL of current tab of front window to "https://www.zhipin.com/web/geek/resume"
+					delay 5
+					set rx to do JavaScript "var r={name:'',experience_years:10,education:'本科',skills:[],kw:[]};var pt=document.body.textContent||'';if(pt.indexOf('博士')>=0)r.education='博士';else if(pt.indexOf('硕士')>=0)r.education='硕士';else if(pt.indexOf('本科')>=0)r.education='本科';var ps=document.querySelector('.resume-professional-skill');if(ps){var t=ps.textContent||'';var p=t.split(/[,，、]/);for(var i=0;i<p.length;i++){var s=p[i].trim();var ci=s.indexOf('：');if(ci>=0)s=s.substring(ci+1);ci=s.indexOf(':');if(ci>=0)s=s.substring(ci+1);if(s.length>1&&s.length<30&&s!='编辑删除'&&s!='专业技能')r.skills.push(s)}}var ak='LLM,AI Agent,RAG,Prompt,SEO,GEO,数字人,AIGC,大模型,知识库,智能体,Agent,虚拟空间,元宇宙,工作流,对话,政务,司法,流量,内容管理,数据产品,B端产品,C端产品,G端产品,产品设计,数据分析,搜索引擎优化,生成式引擎优化,AI助手,模型对话,Prompt Engineering'.split(',');for(var i=0;i<ak.length;i++){if(pt.indexOf(ak[i])>=0&&r.skills.indexOf(ak[i])<0)r.skills.push(ak[i])}localStorage.setItem('bosschat_resume',JSON.stringify(r));" in document of front window
+					set URL of current tab of front window to savedUrl
+					delay 3
+				end if
 		
 		-- 检查搜索结果
-		set rc to execute active tab of front window javascript "document.querySelectorAll('li.job-card-box').length+'';"
+		set rc to do JavaScript "document.querySelectorAll('li.job-card-box').length+'';" in document of front window
 		if rc is "0" or rc is "" then
 			display dialog "请先在 Boss直聘设好筛选条件" buttons {"知道了"} default button 1
 			return
 		end if
 		
 		-- 确认
-		set qc to execute active tab of front window javascript "var d=new Date().toDateString();var s=localStorage.getItem('qdate')||'';var c=parseInt(localStorage.getItem('qcount')||'0');if(s!==d){localStorage.setItem('qdate',d);localStorage.setItem('qcount','0');c=0}(150-c)+'';"
+		set qc to do JavaScript "var d=new Date().toDateString();var s=localStorage.getItem('qdate')||'';var c=parseInt(localStorage.getItem('qcount')||'0');if(s!==d){localStorage.setItem('qdate',d);localStorage.setItem('qcount','0');c=0}(150-c)+'';" in document of front window
 		display dialog "BossChat" & return & "职位:" & rc & " 剩余:" & qc & return & "开始?" buttons {"取消","开始"} default button 2
 		if button returned of result is "取消" then return
 		
@@ -72,15 +70,15 @@ on run
 			log "已投递记录: " & (count of greetedList) & " 条"
 		end try
 		
-		-- 注入引擎（从文件读取）
+		-- 注入引擎（从文件读取，避免Safari字符串长度限制）
 		set engineJs to do shell script "cat " & quoted form of (projectDir & "/src/bosschat_engine.js")
-		execute active tab of front window javascript engineJs
-		set r0 to execute active tab of front window javascript "window.BossChat?'ok':'fail';"
+		do JavaScript engineJs in document of front window
+		set r0 to do JavaScript "window.BossChat?'ok':'fail';" in document of front window
 		log "引擎: " & r0
 		
 				-- 主循环（含翻页）
 				set ptc to 0
-				set searchUrl to execute active tab of front window javascript "window.location.href"
+				set searchUrl to do JavaScript "window.location.href" in document of front window
 				-- 续断进度
 				set progressFile to projectDir & "/progress.txt"
 				set resumeIdx to 0
@@ -111,30 +109,30 @@ on run
 					set ptc to tc
 					repeat with i from sti + 1 to ptc
 						-- 安全检查：确认仍在搜索页，不在则强制定位回去
-						set currentUrl to execute active tab of front window javascript "window.location.href"
-						set hasCards to execute active tab of front window javascript "document.querySelectorAll('li.job-card-box').length+''"
+						set currentUrl to do JavaScript "window.location.href" in document of front window
+						set hasCards to do JavaScript "document.querySelectorAll('li.job-card-box').length+''" in document of front window
 						if currentUrl contains "/chat" or (hasCards is "0") then
 							log "  ⚠ 不在搜索页，正在返回..."
 							set fl to "  ⚠ 不在搜索页，正在返回..."
 							do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-							execute active tab of front window javascript "window.location.href='" & searchUrl & "'"
+							do JavaScript "window.location.href='" & searchUrl & "'" in document of front window
 							delay 4
 							-- 重新获取卡片数
-							set rc to execute active tab of front window javascript "document.querySelectorAll('li.job-card-box').length+''"
+							set rc to do JavaScript "document.querySelectorAll('li.job-card-box').length+''" in document of front window
 							if rc is "0" or rc is "" then exit repeat
 							set tc to rc as integer
 						end if
 				set idx to i - 1
 				
 				-- 重新注入引擎（从文件读取）
-				execute active tab of front window javascript engineJs
+				do JavaScript engineJs in document of front window
 				
 				-- 配额
-				set qc to execute active tab of front window javascript "BossChat.qt();"
+				set qc to do JavaScript "BossChat.qt();" in document of front window
 				if qc ≤ 0 then exit repeat
 				
 				-- 卡片
-				set ci to execute active tab of front window javascript "BossChat.gc(" & idx & ");"
+				set ci to do JavaScript "BossChat.gc(" & idx & ");" in document of front window
 				if ci is "" then exit repeat
 				set AppleScript's text item delimiters to "|"
 				set ct to text item 1 of ci
@@ -149,34 +147,34 @@ on run
 					log "  ⏭ 实习/应届"
 					set fl to "  ⏭ 实习/应届"
 					do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-					execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+					do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 				else
 					log "[" & i & "/" & ptc & "] " & ct & " @ " & cc
 					set fl to "[" & i & "/" & ptc & "] " & ct & " @ " & cc
 					do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-					execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+					do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 					
 					-- 点击卡片刷新右侧面板
-					execute active tab of front window javascript "var cards=document.querySelectorAll('li.job-card-box');if(cards[" & idx & "]){cards[" & idx & "].querySelector('a.job-name').click();}"
+					do JavaScript "var cards=document.querySelectorAll('li.job-card-box');if(cards[" & idx & "]){cards[" & idx & "].querySelector('a.job-name').click();}" in document of front window
 					delay 3
 					
 					-- 外包检测
-					set os to execute active tab of front window javascript "BossChat.os();"
+					set os to do JavaScript "BossChat.os();" in document of front window
 					if os is not "" then
 						set soc to soc + 1
 						log "  ⏭ 外包(" & os & ")"
 						set fl to "  ⏭ 外包(" & os & ")"
 						do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-						execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+						do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 					else
 						-- 活跃检测
-						set ac to execute active tab of front window javascript "BossChat.ac();"
+						set ac to do JavaScript "BossChat.ac();" in document of front window
 						if ac is "no" then
 							set smc to smc + 1
 							log "  ⏭ 不活跃"
 							set fl to "  ⏭ 不活跃"
 							do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-							execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+							do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 						else
 														-- 已投递检查（本地文件）
 														set gh to "false"
@@ -192,7 +190,7 @@ on run
 								log "  ⏭ 已投递过"
 								set fl to "  ⏭ 已投递过"
 								do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-								execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+								do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 							else
 								-- 不合适企业检查（本地文件）
 								set rh to "false"
@@ -208,11 +206,11 @@ on run
 									log "  ⏭ 不合适企业(" & cc & ")"
 									set fl to "  ⏭ 不合适企业(" & cc & ")"
 									do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-									execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+									do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 									else
 																		-- AI匹配评分（本地TF-IDF语义匹配）
-																		set resumeJson to execute active tab of front window javascript "localStorage.getItem('bosschat_resume')||'{}'"
-																		set jdText to execute active tab of front window javascript "var el=document.querySelector('.job-detail-body')||document.querySelector('.job-sec-text');el?el.textContent.substring(0,3000):''"
+																		set resumeJson to do JavaScript "localStorage.getItem('bosschat_resume')||'{}'" in document of front window
+																		set jdText to do JavaScript "var el=document.querySelector('.job-detail-body')||document.querySelector('.job-sec-text');el?el.textContent.substring(0,3000):''" in document of front window
 																		-- 写入临时文件避免shell转义问题
 																		do shell script "echo " & quoted form of resumeJson & " > /tmp/bc_resume.json"
 																		do shell script "echo " & quoted form of jdText & " > /tmp/bc_jd.txt"
@@ -231,38 +229,38 @@ on run
 										log "  ✅ " & mt & "分(" & ms & "+" & mev & "+" & mf & ") 要求" & mr & "年/" & med
 										set fl to "  ✅ " & mt & "分(" & ms & "+" & mev & "+" & mf & ") 要求" & mr & "年/" & med
 										do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-										execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+										do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 																														try
 																																		-- 保存当前URL
-																																		set su to execute active tab of front window javascript "window.location.href"
+																																		set su to do JavaScript "window.location.href" in document of front window
 																																		-- 点击"立即沟通"
-																																		set hb to execute active tab of front window javascript "BossChat.cb();"
+																																		set hb to do JavaScript "BossChat.cb();" in document of front window
 																																		delay 3
 																																		-- 关键修复：不论 cb() 返回什么，都检查是否跳转到了聊天页
 																																		-- （cb() 触发页面跳转后 JS 上下文被销毁，返回值可能丢失）
-																																		set cu to execute active tab of front window javascript "window.location.href"
+																																		set cu to do JavaScript "window.location.href" in document of front window
 																																		if cu is not equal to su and (cu contains "/chat/" or cu contains "/web/geek/chat") then
 																																			log "  ⏭ 已投递过(跳转聊天页)"
 																																			set fl to "  ⏭ 已投递过(跳转聊天页)"
 																																			do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-																																			execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+																																			do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 																																													-- 标记已投递（本地文件）
 																																													if cc is not "" then
 																																														set greetedList to greetedList & (cc & "|" & ch)
 																																														do shell script "/bin/echo " & quoted form of (cc & "|" & ch) & " >> " & quoted form of greetedFile
 																																													end if
-																																													execute active tab of front window javascript "window.location.href='" & searchUrl & "'"
+																																													do JavaScript "window.location.href='" & searchUrl & "'" in document of front window
 																																			delay 3
 																																		else if hb is "yes" then
 																																			delay 1
-																																			execute active tab of front window javascript "BossChat.sb();BossChat.uq();"
+																																			do JavaScript "BossChat.sb();BossChat.uq();" in document of front window
 																																			delay 1
-																																			execute active tab of front window javascript "BossChat._closePopup();"
+																																			do JavaScript "BossChat._closePopup();" in document of front window
 																																			set gc to gc + 1
 																																			log "    ✅ 已打招呼"
 																																			set fl to "    ✅ 已打招呼"
 																																			do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-																																			execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+																																			do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 																																													-- 标记已投递（本地文件）
 																																													if cc is not "" then
 																																														set greetedList to greetedList & (cc & "|" & ch)
@@ -280,17 +278,17 @@ on run
 			
 						-- 滚动加载更多
 						-- 刷新搜索URL（页数变化等情况）
-						set searchUrl to execute active tab of front window javascript "window.location.href"
-						execute active tab of front window javascript "BossChat._scrollToLoad();"
+						set searchUrl to do JavaScript "window.location.href" in document of front window
+						do JavaScript "BossChat._scrollToLoad();" in document of front window
 						delay 3
-						set rc to execute active tab of front window javascript "document.querySelectorAll('li.job-card-box').length+'';"
+						set rc to do JavaScript "document.querySelectorAll('li.job-card-box').length+'';" in document of front window
 						if rc as integer ≤ ptc then exit repeat
 						set tc to rc as integer
 						-- 保存续断进度
 						do shell script "/bin/echo " & quoted form of (searchUrl & "|" & ptc) & " > " & quoted form of progressFile
 			
 			-- 检查配额
-			set qc to execute active tab of front window javascript "BossChat.qt();"
+			set qc to do JavaScript "BossChat.qt();" in document of front window
 			if qc ≤ 0 then exit repeat
 			
 		end repeat
@@ -300,12 +298,12 @@ on run
 		log "招呼:" & gc & " 外包:" & soc & " 做题:" & stc & " 不匹配:" & smc
 		set fl to "--- 完成 ---"
 		do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
-		execute active tab of front window javascript "BossChat._addLog('" & fl & "')"
+		do JavaScript "BossChat._addLog('" & fl & "')" in document of front window
 		set fl2 to "招呼:" & gc & " 外包:" & soc & " 做题:" & stc & " 不匹配:" & smc
 		do shell script "/bin/echo " & quoted form of fl2 & " >> " & quoted form of logFile
-		execute active tab of front window javascript "BossChat._addLog('" & fl2 & "')"
+		do JavaScript "BossChat._addLog('" & fl2 & "')" in document of front window
 		do shell script "/bin/echo === End === >> " & quoted form of logFile
-		execute active tab of front window javascript "BossChat._addLog('=== End ===')"
+		do JavaScript "BossChat._addLog('=== End ===')" in document of front window
 		
 		-- 投递后扫描聊天，检测不合适企业
 		log "=== 扫描聊天 ==="
@@ -326,12 +324,12 @@ on run
 			end repeat
 		end try
 		set newRcCount to 0
-		set URL of active tab of front window to "https://www.zhipin.com/web/geek/chat"
+		set URL of current tab of front window to "https://www.zhipin.com/web/geek/chat"
 		delay 5
 		-- 聊天页重新注入（从文件读取，避免AppleScript引号冲突）
 		set chatJs to do shell script "cat " & quoted form of (projectDir & "/src/chat_scan_helpers.js")
-		execute active tab of front window javascript "window.BossChat=window.BossChat||{}"
-		execute active tab of front window javascript chatJs
+		do JavaScript "window.BossChat=window.BossChat||{}" in document of front window
+		do JavaScript chatJs in document of front window
 		set pageNum to 0
 		set newRcCount to 0
 		set pageLastComp to ""
@@ -339,17 +337,17 @@ on run
 		
 		-- 翻页循环（虚拟滚动：每次滚动后对比最后的公司名是否变化）
 		repeat 20 times
-			set cvCount to execute active tab of front window javascript "BossChat._getConvoCount()"
+			set cvCount to do JavaScript "BossChat._getConvoCount()" in document of front window
 			if cvCount is "" or cvCount ≤ startIdx then exit repeat
 			set pageNum to pageNum + 1
 			log "--- 第" & pageNum & "页: 索引" & startIdx & "-" & (cvCount as integer - 1) & " ---"
 			set startMsg to "--- 第" & pageNum & "页: " & cvCount & "个对话 ---"
-			execute active tab of front window javascript "BossChat._addChatLog('" & startMsg & "')"
+			do JavaScript "BossChat._addChatLog('" & startMsg & "')" in document of front window
 			
 			repeat with cvi from startIdx to (cvCount as integer) - 1
-				set cvCompany to execute active tab of front window javascript "BossChat._clickConvo(" & cvi & ")"
+				set cvCompany to do JavaScript "BossChat._clickConvo(" & cvi & ")" in document of front window
 				delay 3
-				set cvReject to execute active tab of front window javascript "BossChat._checkRejection()"
+				set cvReject to do JavaScript "BossChat._checkRejection()" in document of front window
 				if cvReject is "yes" then
 					set alreadyInList to false
 					repeat with rcl in rcList
@@ -363,7 +361,7 @@ on run
 						set rcList to rcList & {cvCompany}
 						set newRcCount to newRcCount + 1
 						set chatMsg to "[" & (cvi + 1) & "] ❌ " & cvCompany & " → 不合适"
-						execute active tab of front window javascript "BossChat._addChatLog('" & chatMsg & "')"
+						do JavaScript "BossChat._addChatLog('" & chatMsg & "')" in document of front window
 						log "  ❌ 不合适企业: " & cvCompany
 						set fl to "  ❌ 不合适企业: " & cvCompany
 						do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
@@ -371,18 +369,18 @@ on run
 					end if
 				else
 					set chatMsg to "[" & (cvi + 1) & "] ✅ " & cvCompany & " → 正常"
-					execute active tab of front window javascript "BossChat._addChatLog('" & chatMsg & "')"
+					do JavaScript "BossChat._addChatLog('" & chatMsg & "')" in document of front window
 				end if
 			end repeat
 			
 			-- 翻页：滚动user-list-content加载更早的对话
 			set startIdx to cvCount as integer
-			execute active tab of front window javascript "BossChat._addChatLog('↕ 正在翻页...')"
-			execute active tab of front window javascript "BossChat._scrollPage()"
+			do JavaScript "BossChat._addChatLog('↕ 正在翻页...')" in document of front window
+			do JavaScript "BossChat._scrollPage()" in document of front window
 			delay 3
-			set lastComp to execute active tab of front window javascript "BossChat._getLastCompany()"
+			set lastComp to do JavaScript "BossChat._getLastCompany()" in document of front window
 			if lastComp is pageLastComp then
-				execute active tab of front window javascript "BossChat._addChatLog('✓ 没有更多对话了')"
+				do JavaScript "BossChat._addChatLog('✓ 没有更多对话了')" in document of front window
 				exit repeat
 			end if
 			set pageLastComp to lastComp
@@ -390,7 +388,7 @@ on run
 		end repeat
 		
 		set endMsg to "--- 扫描完成，共" & pageNum & "页，新发现不合格企业: " & newRcCount & " 家 ---"
-		execute active tab of front window javascript "BossChat._addChatLog('" & endMsg & "')"
+		do JavaScript "BossChat._addChatLog('" & endMsg & "')" in document of front window
 		log "新发现不合适企业: " & newRcCount & " 家"
 		set fl to "新发现不合适企业: " & newRcCount & " 家"
 		do shell script "/bin/echo " & quoted form of fl & " >> " & quoted form of logFile
